@@ -1,9 +1,8 @@
 // api/indexnow.js - Vercel Serverless Function for Shopify + IndexNow
-// NEW LINE: Use this dynamic import instead:
 const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 
 module.exports = async (req, res) => {
-  // 1. Set CORS headers for preflight requests (optional but good practice)
+  // 1. Set CORS headers for preflight requests
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST');
@@ -21,20 +20,20 @@ module.exports = async (req, res) => {
   }
 
   try {
-       // 3. Parse Shopify's webhook JSON payload
-    const shopifyProduct = req.body;
-    console.log('📦 Received Shopify webhook for:', shopifyProduct.title || shopifyProduct.handle);
+    // 3. Parse Shopify's webhook JSON payload
+    const shopifyData = req.body;
+    console.log('📦 Received Shopify webhook for:', shopifyData.title || shopifyData.handle || 'Unknown Resource');
 
     // 4. Identify resource and build the correct URL
     let targetUrl;
-    const resourceType = shopifyProduct.__parent_resource; // Shopify adds this field
+    const resourceType = shopifyData.__parent_resource; // Shopify adds this field
 
-    if (resourceType === 'product' && shopifyProduct.handle) {
-      targetUrl = `https://www.pawvortex.com/products/${shopifyProduct.handle}`;
+    if (resourceType === 'product' && shopifyData.handle) {
+      targetUrl = `https://www.pawvortex.com/products/${shopifyData.handle}`;
       console.log('🔗 Product URL:', targetUrl);
     }
-    else if (resourceType === 'collection' && shopifyProduct.handle) {
-      targetUrl = `https://www.pawvortex.com/collections/${shopifyProduct.handle}`;
+    else if (resourceType === 'collection' && shopifyData.handle) {
+      targetUrl = `https://www.pawvortex.com/collections/${shopifyData.handle}`;
       console.log('🔗 Collection URL:', targetUrl);
     }
     else {
@@ -48,7 +47,7 @@ module.exports = async (req, res) => {
       host: "www.pawvortex.com",
       key: "7f8e9a1b6t7u4e5f6g7h8i9j0k1l2m3n",
       keyLocation: ""https://www.pawvortex.com/7f8e9a1b6t7u4e5f6g7h8i9j0k1l2m3n.txt",
-      urlList: [targetUrl] // <-- USING THE NEW VARIABLE HERE
+      urlList: [targetUrl]
     };
     console.log('📤 Payload ready for IndexNow');
 
@@ -66,13 +65,12 @@ module.exports = async (req, res) => {
 
     // 7. Check if IndexNow accepted the submission
     if (responseStatus === 200 || responseStatus === 202) {
-      console.log(`🚀 Successfully submitted to IndexNow: ${productUrl}`);
+      console.log(`🚀 Successfully submitted to IndexNow: ${targetUrl}`);
       return res.status(200).json({ 
         success: true, 
-        message: `Submitted to IndexNow: ${productUrl}` 
+        message: `Submitted to IndexNow: ${targetUrl}` 
       });
     } else {
-      // If IndexNow returned an error, read and log it
       const errorText = await indexnowResponse.text();
       console.error(`❌ IndexNow Error (${responseStatus}):`, errorText);
       return res.status(500).json({ 
@@ -83,7 +81,6 @@ module.exports = async (req, res) => {
     }
 
   } catch (error) {
-    // 8. Catch any server errors
     console.error('💥 Server Error:', error);
     return res.status(500).json({ 
       success: false, 
