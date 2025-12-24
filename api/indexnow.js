@@ -20,21 +20,28 @@ module.exports = async (req, res) => {
     const shopifyData = req.body;
     console.log('📦 Received Shopify webhook for:', shopifyData.title || shopifyData.handle || 'Unknown Resource');
 
-    let targetUrl;
-    const resourceType = shopifyData.__parent_resource;
+      let targetUrl;
+    let resourceType = 'unknown';
 
-    if (resourceType === 'product' && shopifyData.handle) {
+    // Method 1: Check the Shopify-added field (works for products)
+    if (shopifyData.__parent_resource === 'product' && shopifyData.handle) {
+      resourceType = 'product';
       targetUrl = `https://www.pawvortex.com/products/${shopifyData.handle}`;
-      console.log('🔗 Product URL:', targetUrl);
     }
-    else if (resourceType === 'collection' && shopifyData.handle) {
+    // Method 2: Check for collection-specific data structure
+    else if (shopifyData.handle && shopifyData.title && shopifyData.__parent_resource === undefined) {
+      // Collections often have 'handle' and 'title' but no '__parent_resource'
+      resourceType = 'collection';
       targetUrl = `https://www.pawvortex.com/collections/${shopifyData.handle}`;
-      console.log('🔗 Collection URL:', targetUrl);
     }
-    else {
-      console.log(`⚠️ Webhook for '${resourceType}' received. No action taken.`);
-      return res.status(200).json({ message: `Webhook for ${resourceType} received.` });
+
+    // If we couldn't identify it, log the FULL data and exit
+    if (!targetUrl) {
+      console.log('⚠️ Unidentified webhook received. Full data:', JSON.stringify(shopifyData, null, 2));
+      return res.status(200).json({ message: 'Webhook received but resource type not recognized.' });
     }
+
+    console.log(`🔗 ${resourceType.charAt(0).toUpperCase() + resourceType.slice(1)} URL:`, targetUrl);
 
     // ⭐⭐ CRITICAL: This object must be perfectly formed ⭐⭐
     const indexnowPayload = {
