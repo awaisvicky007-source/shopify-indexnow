@@ -21,22 +21,34 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // 3. Parse Shopify's webhook JSON payload
+       // 3. Parse Shopify's webhook JSON payload
     const shopifyProduct = req.body;
-    console.log('📦 Received Shopify product:', shopifyProduct.title);
-    
-    // 4. Construct the product's public URL
-    // The 'handle' is the URL-friendly name (e.g., 'smart-dog-collar')
-    const productHandle = shopifyProduct.handle;
-    const productUrl = `https://www.pawvortex.com/products/${productHandle}`;
-    console.log('🔗 Product URL:', productUrl);
+    console.log('📦 Received Shopify webhook for:', shopifyProduct.title || shopifyProduct.handle);
 
-    // 5. YOUR PROVEN IndexNow Payload (from your working curl command)
+    // 4. Identify resource and build the correct URL
+    let targetUrl;
+    const resourceType = shopifyProduct.__parent_resource; // Shopify adds this field
+
+    if (resourceType === 'product' && shopifyProduct.handle) {
+      targetUrl = `https://www.pawvortex.com/products/${shopifyProduct.handle}`;
+      console.log('🔗 Product URL:', targetUrl);
+    }
+    else if (resourceType === 'collection' && shopifyProduct.handle) {
+      targetUrl = `https://www.pawvortex.com/collections/${shopifyProduct.handle}`;
+      console.log('🔗 Collection URL:', targetUrl);
+    }
+    else {
+      // Log other types but take no action for now
+      console.log(`⚠️ Webhook for '${resourceType}' received. No action taken.`);
+      return res.status(200).json({ message: `Webhook for ${resourceType} received.` });
+    }
+
+    // 5. YOUR PROVEN IndexNow Payload
     const indexnowPayload = {
       host: "www.pawvortex.com",
       key: "7f8e9a1b6t7u4e5f6g7h8i9j0k1l2m3n",
-      keyLocation: "https://www.pawvortex.com/7f8e9a1b6t7u4e5f6g7h8i9j0k1l2m3n.txt",
-      urlList: [productUrl]
+      keyLocation: ""https://www.pawvortex.com/7f8e9a1b6t7u4e5f6g7h8i9j0k1l2m3n.txt",
+      urlList: [targetUrl] // <-- USING THE NEW VARIABLE HERE
     };
     console.log('📤 Payload ready for IndexNow');
 
